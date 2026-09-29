@@ -80,10 +80,14 @@ class TestMainReportsExportFailure(ExportFailureTestBase):
 
     def test_error_from_log_is_raised_and_reported(self):
         logs, _ = self.run_main_with_failing_json_export()
-        # Sanity check: we reproduced the same error line as error.log.
-        self.assertIn(
-            f"ERROR:{process_data.logger.name}:Error exporting data: {LOG_ERROR_MESSAGE}",
-            logs.output,
+        # Sanity check: we reproduced the same error line as error.log
+        # (possibly followed by a traceback).
+        expected = (
+            f"ERROR:{process_data.logger.name}:Error exporting data: {LOG_ERROR_MESSAGE}"
+        )
+        self.assertTrue(
+            any(line.startswith(expected) for line in logs.output),
+            f"{expected!r} not found in {logs.output!r}",
         )
 
     def test_main_does_not_claim_success_after_export_failure(self):

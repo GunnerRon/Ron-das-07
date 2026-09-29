@@ -5,10 +5,13 @@ This script processes customer transaction data and generates reports.
 """
 
 import csv
+import heapq
 import json
 import logging
+import sys
+from collections import Counter
 from datetime import datetime
-from typing import Dict, List, Any, Optional
+from typing import Dict, List, Any
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -46,7 +49,7 @@ class DataProcessor:
             logger.error(f"Input file {self.input_file} not found")
             return False
         except Exception as e:
-            logger.error(f"Error loading data: {e}")
+            logger.exception(f"Error loading data: {e}")
             return False
 
     def process_transactions(self, transaction_file: str) -> bool:
@@ -55,22 +58,23 @@ class DataProcessor:
             with open(transaction_file, "r") as file:
                 reader = csv.DictReader(file)
                 for row in reader:
-                    transaction = {
-                        "transaction_id": row["transaction_id"],
-                        "customer_id": row["customer_id"],
-                        "amount": float(row["amount"]),
-                        "date": row["date"],
-                        "category": row["category"],
-                    }
-                    self.transactions.append(transaction)
+                    customer_id = row["customer_id"]
+                    amount = float(row["amount"])
+                    self.transactions.append(
+                        {
+                            "transaction_id": row["transaction_id"],
+                            "customer_id": customer_id,
+                            "amount": amount,
+                            "date": row["date"],
+                            "category": row["category"],
+                        }
+                    )
 
                     # Update customer totals
-                    customer_id = row["customer_id"]
-                    if customer_id in self.customers:
-                        self.customers[customer_id]["total_spent"] += float(
-                            row["amount"]
-                        )
-                        self.customers[customer_id]["transaction_count"] += 1
+                    customer = self.customers.get(customer_id)
+                    if customer is not None:
+                        customer["total_spent"] += amount
+                        customer["transaction_count"] += 1
                     else:
                         logger.warning(
                             f"Transaction for unknown customer: {customer_id}"
@@ -82,7 +86,7 @@ class DataProcessor:
             logger.error(f"Transaction file {transaction_file} not found")
             return False
         except Exception as e:
-            logger.error(f"Error processing transactions: {e}")
+            logger.exception(f"Error processing transactions: {e}")
             return False
 
     def calculate_customer_metrics(self) -> Dict[str, Any]:
@@ -109,16 +113,14 @@ class DataProcessor:
             )
 
         # Find top customers by total spent
-        customer_list = [(cid, data) for cid, data in self.customers.items()]
-        customer_list.sort(key=lambda x: x[1]["total_spent"], reverse=True)
-        metrics["top_customers"] = customer_list[:10]
+        metrics["top_customers"] = heapq.nlargest(
+            10, self.customers.items(), key=lambda item: item[1]["total_spent"]
+        )
 
         # Calculate category breakdown
-        for transaction in self.transactions:
-            category = transaction["category"]
-            if category not in metrics["category_breakdown"]:
-                metrics["category_breakdown"][category] = 0
-            metrics["category_breakdown"][category] += 1
+        metrics["category_breakdown"] = dict(
+            Counter(transaction["category"] for transaction in self.transactions)
+        )
 
         return metrics
 
@@ -167,7 +169,7 @@ class DataProcessor:
             return True
 
         except Exception as e:
-            logger.error(f"Error generating report: {e}")
+            logger.exception(f"Error generating report: {e}")
             return False
 
     def export_customer_data(self, output_file: str, format: str = "csv") -> bool:
@@ -196,7 +198,7 @@ class DataProcessor:
             return True
 
         except Exception as e:
-            logger.error(f"Error exporting data: {e}")
+            logger.exception(f"Error exporting data: {e}")
             return False
 
 
@@ -208,21 +210,33 @@ def main():
     # Load data
     if not processor.load_data():
         logger.error("Failed to load customer data")
-        return
+        sys.exit(1)
 
     # Process transactions
     if not processor.process_transactions("transactions.csv"):
         logger.error("Failed to process transactions")
-        return
+        sys.exit(1)
 
-    # Generate reports
-    processor.generate_report("customer_summary", "customer_summary.json")
-    processor.generate_report("metrics", "metrics.json")
-    processor.generate_report("transactions", "transactions.json")
-
-    # Export data
-    processor.export_customer_data("customers_export.csv", "csv")
-    processor.export_customer_data("customers_export.json", "json")
+    # Generate reports and export data, recording any step that fails
+    results = {
+        "customer_summary.json": processor.generate_report(
+            "customer_summary", "customer_summary.json"
+        ),
+        "metrics.json": processor.generate_report("metrics", "metrics.json"),
+        "transactions.json": processor.generate_report(
+            "transactions", "transactions.json"
+        ),
+        "customers_export.csv": processor.export_customer_data(
+            "customers_export.csv", "csv"
+        ),
+        "customers_export.json": processor.export_customer_data(
+            "customers_export.json", "json"
+        ),
+    }
+    failed = [output for output, ok in results.items() if not ok]
+    if failed:
+        logger.error(f"Data processing failed; could not write: {', '.join(failed)}")
+        sys.exit(1)
 
     logger.info("Data processing completed successfully")
 
