@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% block title %}Moderation{% endblock %}
+{% block content %}
+<section class="card">
+  <h1>Kudos moderation</h1>
+  <p class="muted">Hide kudos to remove them from the public feed (reversible) or delete them permanently. A reason is recorded for every action.</p>
+  <div class="tabs" role="tablist" aria-label="Filter by status">
+    <button type="button" role="tab" class="tab" data-status="all" aria-selected="true">All</button>
+    <button type="button" role="tab" class="tab" data-status="visible" aria-selected="false">Visible</button>
+    <button type="button" role="tab" class="tab" data-status="hidden" aria-selected="false">Hidden</button>
+    <button type="button" role="tab" class="tab" data-status="deleted" aria-selected="false">Deleted</button>
+  </div>
+  <p id="admin-banner" class="banner" role="status" hidden></p>
+  <ol id="admin-list" class="feed"></ol>
+  <p id="admin-empty" class="muted" hidden>Nothing here.</p>
+  <button id="admin-more" type="button" class="secondary" hidden>Load more</button>
+</section>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='admin.js') }}"></script>
+{% endblock %}

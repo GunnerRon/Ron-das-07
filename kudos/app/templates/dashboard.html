@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}Dashboard{% endblock %}
+{% block content %}
+<div class="layout">
+  <section class="card" aria-labelledby="give-heading">
+    <h1 id="give-heading">Give kudos</h1>
+    <form id="kudos-form" novalidate>
+      <p id="form-banner" class="banner banner-error" role="alert" hidden></p>
+
+      <label for="recipient-search">Colleague</label>
+      <input id="recipient-search" type="search" placeholder="Filter by name or team…"
+             autocomplete="off" aria-controls="recipient">
+      <select id="recipient" name="recipient_id" required aria-describedby="recipient-error">
+        <option value="">Loading colleagues…</option>
+      </select>
+      <p id="recipient-error" class="field-error" hidden></p>
+
+      <label for="message">Message</label>
+      <textarea id="message" name="message" rows="5" maxlength="{{ max_len }}" required
+                placeholder="Say thanks for something specific…"
+                aria-describedby="message-counter message-error"></textarea>
+      <div class="row-between">
+        <p id="message-error" class="field-error" hidden></p>
+        <p id="message-counter" class="counter" data-max="{{ max_len }}" aria-live="polite">{{ max_len }} characters left</p>
+      </div>
+
+      <button id="submit" type="submit" class="primary">Send kudos</button>
+    </form>
+  </section>
+
+  <section class="card" aria-labelledby="feed-heading">
+    <h2 id="feed-heading">Recent kudos</h2>
+    <ol id="feed" class="feed" aria-live="polite"></ol>
+    <p id="feed-empty" class="muted" hidden>No kudos yet. Be the first!</p>
+    <p id="feed-error" class="banner banner-error" role="alert" hidden></p>
+    <button id="load-more" type="button" class="secondary" hidden>Load more</button>
+  </section>
+</div>
+{% endblock %}
+{% block scripts %}
+<script src="{{ url_for('static', filename='common.js') }}"></script>
+<script src="{{ url_for('static', filename='dashboard.js') }}"></script>
+{% endblock %}
